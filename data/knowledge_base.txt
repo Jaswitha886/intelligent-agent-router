@@ -1,0 +1,3 @@
+This file contains reference information used by the Evidence Agent.
+You can include academic policies, technical notes, or trusted documents here.
+The retriever uses deterministic extraction to reduce hallucination.

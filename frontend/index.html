@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Router</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Z"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                    Agent Router
+                </h2>
+            </div>
+            <div class="chat-list">
+                <div class="chat-item active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Current Session
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <span class="pulse-dot"></span> All Systems Operational
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat -->
+        <main class="chat-main">
+            <header class="chat-header">
+                <div class="header-title">Intelligent Agent Router</div>
+            </header>
+
+            <div id="chatContainer" class="chat-container">
+                <!-- Welcome message -->
+                <div class="message ai">
+                    <div class="avatar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"></path><path d="M12 12v8"></path><path d="M8 16h8"></path></svg>
+                    </div>
+                    <div class="msg-content welcome-card">
+                        <h3>Welcome to the AI Router Server.</h3>
+                        <p>Ask a complex question and I will deploy multiple agents to debate it, extracting pros, cons, and evidence to deliver a highly accurate final answer.</p>
+                        <div class="suggested-prompts">
+                            <button onclick="setQuery('Should our company adopt a fully remote work policy?')">Fully remote policy?</button>
+                            <button onclick="setQuery('Is universal basic income a viable economic policy?')">Universal basic income?</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea id="queryInput" placeholder="Ask the AI agents anything..." rows="1" onkeydown="handleEnter(event)"></textarea>
+                    <button id="sendBtn" onclick="sendMessage()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+                <div class="input-footer">AI agents can make mistakes. Consider verifying critical information.</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        marked.setOptions({ breaks: true });
+
+        const queryInput = document.getElementById('queryInput');
+        const chatContainer = document.getElementById('chatContainer');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function setQuery(text) {
+            queryInput.value = text;
+            queryInput.focus();
+            sendMessage();
+        }
+
+        function handleEnter(e) {
+            if(e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        queryInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            if(this.value === '') this.style.height = 'auto';
+        });
+
+        async function sendMessage() {
+            const query = queryInput.value.trim();
+            if(!query) return;
+
+            appendUserMessage(query);
+            queryInput.value = '';
+            queryInput.style.height = 'auto';
+            
+            const loadingId = appendAILoading();
+            
+            try {
+                const res = await fetch("http://127.0.0.1:8000/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query })
+                });
+                const data = await res.json();
+                
+                if(!res.ok) throw new Error(data.detail || `Server returned HTTP ${res.status}`);
+                renderAIResponse(loadingId, data);
+            } catch(err) {
+                document.getElementById(loadingId).innerHTML = `<div class="avatar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"></path><path d="M12 12v8"></path><path d="M8 16h8"></path></svg></div>
+                    <div class="msg-content error-msg">${err.message}</div>`;
+            }
+        }
+
+        function appendUserMessage(text) {
+            const msgHTML = `<div class="message user"><div class="msg-content">${text}</div></div>`;
+            chatContainer.insertAdjacentHTML('beforeend', msgHTML);
+            scrollToBottom();
+        }
+
+        function appendAILoading() {
+            const id = 'loading-' + Date.now();
+            const msgHTML = `
+                <div class="message ai" id="${id}">
+                    <div class="avatar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"></path><path d="M12 12v8"></path><path d="M8 16h8"></path></svg></div>
+                    <div class="msg-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>
+                </div>`;
+            chatContainer.insertAdjacentHTML('beforeend', msgHTML);
+            scrollToBottom();
+            return id;
+        }
+
+        function renderAIResponse(id, data) {
+            const el = document.getElementById(id);
+            let innerHTML = `<div class="avatar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"></path><path d="M12 12v8"></path><path d="M8 16h8"></path></svg></div><div class="msg-content ai-response-content">`;
+            
+            if(data.mode === 'single') {
+                innerHTML += `
+                    <div class="card final-card glass">
+                        <h4><span class="icon">✨</span> Final Answer</h4>
+                        <div class="card-body">${marked.parse(data.final || "")}</div>
+                    </div>`;
+            } else {
+                innerHTML += `
+                    <div class="debate-grid">
+                        <div class="card pro-card glass">
+                            <h4><span class="icon">👍</span> Pros</h4>
+                            <div class="card-body">${marked.parse(data.pro || "")}</div>
+                        </div>
+                        <div class="card con-card glass">
+                            <h4><span class="icon">👎</span> Cons</h4>
+                            <div class="card-body">${marked.parse(data.con || "")}</div>
+                        </div>
+                    </div>
+                    <div class="card evidence-card glass">
+                        <h4><span class="icon">🔍</span> Supporting Evidence</h4>
+                        <div class="card-body">${marked.parse(data.evidence || "")}</div>
+                    </div>
+                    <div class="card final-card glass highlight-glow">
+                        <h4><span class="icon">⚖️</span> Final Decision</h4>
+                        <div class="card-body">${marked.parse(data.final || "")}</div>
+                    </div>`;
+            }
+            innerHTML += `</div>`;
+            el.innerHTML = innerHTML;
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+            }, 50);
+        }
+    </script>
+</body>
+</html>
